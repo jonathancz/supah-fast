@@ -1,6 +1,0 @@
-@SupahFast_HostAddress = http://localhost:5041
-
-GET {{SupahFast_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -1,9 +1,23 @@
+using SupahFast.Application;
+using SupahFast.Common;
+using SupahFast.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure OpenWeatherMapSettings
+var openWeatherMapSettings = builder.Configuration.GetSection("OpenWeatherMap").Get<OpenWeatherMapSettings>();
+builder.Services.AddSingleton(openWeatherMapSettings);
+
+// Configure HttpClient via IHttpClientFactory
+builder.Services.AddHttpClient();
+
+// Register your services
+builder.Services.AddScoped<IWeatherService, WeatherService>();
+builder.Services.AddScoped<IWeatherGateway, WeatherGateway>();
 
 var app = builder.Build();
 
@@ -16,29 +30,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("/api/weather/{city}", async (string city, IWeatherService weatherService) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
+    try
     {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
+        var result = weatherService.GetWeatherData(city);
+        return Results.Ok(result);
+    }
+    catch (Exception e)
+    {
+        return Results.Problem(e.Message);
+    }
+});
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
